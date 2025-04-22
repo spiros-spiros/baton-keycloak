@@ -3,10 +3,11 @@ package connector
 import (
 	"context"
 	// the conductor one SDKs are already built, so this bit should be easy
-	"github.com/conductorone/baton-keycloak/pkg/keycloak"
+	"github.com/spiros-spiros/baton-keycloak/pkg/keycloak"
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
+	"github.com/conductorone/baton-sdk/pkg/types/resource"
 )
 
 type groupSyncer struct {
@@ -25,13 +26,7 @@ func (s *groupSyncer) ResourceType(ctx context.Context) *v2.ResourceType {
 		Id:          "group",
 		DisplayName: "Group",
 		Description: "A group from Keycloak",
-		TraitOptions: []*v2.ResourceTypeTraitOption{
-			{
-				Trait: &v2.ResourceTypeTrait{
-					Id: "group",
-				},
-			},
-		},
+		Traits:      []v2.ResourceType_Trait{v2.ResourceType_TRAIT_GROUP},
 	}
 }
 
@@ -43,23 +38,16 @@ func (s *groupSyncer) List(ctx context.Context, parentResourceID *v2.ResourceId,
 
 	var resources []*v2.Resource
 	for _, group := range groups {
-		resource := &v2.Resource{
-			Id: &v2.ResourceId{
-				ResourceType: "group",
-				Resource:     *group.ID,
+		resource, err := resource.NewGroupResource(
+			*group.Name,
+			s.ResourceType(ctx),
+			*group.ID,
+			[]resource.GroupTraitOption{
+				resource.WithGroupProfile(*group.Name),
 			},
-			DisplayName: *group.Name,
-			Description: "Keycloak Group",
-			Traits: []*v2.ResourceTrait{
-				{
-					Id: "group",
-					Trait: &v2.ResourceTrait_GroupTrait{
-						GroupTrait: &v2.GroupTrait{
-							Name: *group.Name,
-						},
-					},
-				},
-			},
+		)
+		if err != nil {
+			return nil, "", nil, err
 		}
 		resources = append(resources, resource)
 	}

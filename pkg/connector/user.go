@@ -8,6 +8,7 @@ import (
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
+	"github.com/conductorone/baton-sdk/pkg/types/resource"
 )
 
 type userSyncer struct {
@@ -25,13 +26,7 @@ func (s *userSyncer) ResourceType(ctx context.Context) *v2.ResourceType {
 		Id:          "user",
 		DisplayName: "User",
 		Description: "A user from Keycloak",
-		TraitOptions: []*v2.ResourceTypeTraitOption{
-			{
-				Trait: &v2.ResourceTypeTrait{
-					Id: "user",
-				},
-			},
-		},
+		Traits:      []v2.ResourceType_Trait{v2.ResourceType_TRAIT_USER},
 	}
 }
 
@@ -43,26 +38,18 @@ func (s *userSyncer) List(ctx context.Context, parentResourceID *v2.ResourceId, 
 
 	var resources []*v2.Resource
 	for _, user := range users {
-		resource := &v2.Resource{
-			Id: &v2.ResourceId{
-				ResourceType: "user",
-				Resource:     *user.ID,
+		resource, err := resource.NewUserResource(
+			*user.Username,
+			s.ResourceType(ctx),
+			*user.ID,
+			[]resource.UserTraitOption{
+				resource.WithUserEmail(*user.Email),
+				resource.WithUserProfile(*user.FirstName, *user.LastName),
+				resource.WithUserStatus(v2.UserTrait_Status_STATUS_ENABLED),
 			},
-			DisplayName: *user.Username,
-			Description: "Keycloak User",
-			Traits: []*v2.ResourceTrait{
-				{
-					Id: "user",
-					Trait: &v2.ResourceTrait_UserTrait{
-						UserTrait: &v2.UserTrait{
-							Email:     *user.Email,
-							Username:  *user.Username,
-							FirstName: *user.FirstName,
-							LastName:  *user.LastName,
-						},
-					},
-				},
-			},
+		)
+		if err != nil {
+			return nil, "", nil, err
 		}
 		resources = append(resources, resource)
 	}
