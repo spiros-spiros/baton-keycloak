@@ -38,12 +38,15 @@ func (s *groupSyncer) List(ctx context.Context, parentResourceID *v2.ResourceId,
 
 	var resources []*v2.Resource
 	for _, group := range groups {
+		profile := map[string]interface{}{
+			"name": *group.Name,
+		}
 		resource, err := resource.NewGroupResource(
 			*group.Name,
 			s.ResourceType(ctx),
 			*group.ID,
 			[]resource.GroupTraitOption{
-				resource.WithGroupProfile(*group.Name),
+				resource.WithGroupProfile(profile),
 			},
 		)
 		if err != nil {

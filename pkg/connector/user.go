@@ -38,14 +38,18 @@ func (s *userSyncer) List(ctx context.Context, parentResourceID *v2.ResourceId, 
 
 	var resources []*v2.Resource
 	for _, user := range users {
+		profile := map[string]interface{}{
+			"email":     *user.Email,
+			"username":  *user.Username,
+			"firstName": *user.FirstName,
+			"lastName":  *user.LastName,
+		}
 		resource, err := resource.NewUserResource(
 			*user.Username,
 			s.ResourceType(ctx),
 			*user.ID,
 			[]resource.UserTraitOption{
-				resource.WithUserEmail(*user.Email),
-				resource.WithUserProfile(*user.FirstName, *user.LastName),
-				resource.WithUserStatus(v2.UserTrait_Status_STATUS_ENABLED),
+				resource.WithUserProfile(profile),
 			},
 		)
 		if err != nil {
