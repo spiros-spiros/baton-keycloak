@@ -3,9 +3,9 @@ package connector
 import (
 	"context"
 	// the conductor one SDKs are already built, so this bit should be easy
-	"github.com/conductorone/baton-sdk/pkg/connectorbuilder"
+	"github.com/conductorone/baton-keycloak/pkg/keycloak"
+	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
-	"github.com/spiros-spiros/baton-keycloak/pkg/keycloak"
 )
 
 type groupSyncer struct {
@@ -19,33 +19,42 @@ func newGroupSyncer(client *keycloak.Client) *groupSyncer {
 }
 
 // might need to add roles as well as groups, but let's see if we can get this working first
-func (s *groupSyncer) ResourceType(ctx context.Context) *connectorbuilder.ResourceType {
-	return &connectorbuilder.ResourceType{
-		ID:          "group",
+func (s *groupSyncer) ResourceType(ctx context.Context) *v2.ResourceType {
+	return &v2.ResourceType{
+		Id:          "group",
 		DisplayName: "Group",
-		TraitOptions: []connectorbuilder.TraitOption{
-			connectorbuilder.WithGroupTrait(),
+		TraitOptions: []*v2.ResourceTypeTraitOption{
+			{
+				Trait: &v2.ResourceTypeTrait{
+					Id: "group",
+				},
+			},
 		},
 	}
 }
 
-func (s *groupSyncer) List(ctx context.Context, parentResourceID *connectorbuilder.ResourceID, pToken *pagination.Token) ([]*connectorbuilder.Resource, string, error) {
+func (s *groupSyncer) List(ctx context.Context, parentResourceID *v2.ResourceId, pToken *pagination.Token) ([]*v2.Resource, string, error) {
 	groups, err := s.client.GetGroups(ctx)
 	if err != nil {
 		return nil, "", err
 	}
 
-	var resources []*connectorbuilder.Resource
+	var resources []*v2.Resource
 	for _, group := range groups {
-		resource := &connectorbuilder.Resource{
-			ID: &connectorbuilder.ResourceID{
+		resource := &v2.Resource{
+			Id: &v2.ResourceId{
 				ResourceType: "group",
 				Resource:     *group.ID,
 			},
 			DisplayName: *group.Name,
-			Traits: []connectorbuilder.Trait{
-				&connectorbuilder.GroupTrait{
-					Name: *group.Name,
+			Traits: []*v2.ResourceTrait{
+				{
+					Id: "group",
+					Trait: &v2.ResourceTrait_GroupTrait{
+						GroupTrait: &v2.GroupTrait{
+							Name: *group.Name,
+						},
+					},
 				},
 			},
 		}
@@ -56,12 +65,11 @@ func (s *groupSyncer) List(ctx context.Context, parentResourceID *connectorbuild
 }
 
 // get groups
-func (s *groupSyncer) Entitlements(ctx context.Context, resource *connectorbuilder.Resource, pToken *pagination.Token) ([]*connectorbuilder.Entitlement, string, error) {
+func (s *groupSyncer) Entitlements(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Entitlement, string, error) {
 	return nil, "", nil
 }
 
 // now get entitlements
-func (s *groupSyncer) Grants(ctx context.Context, resource *connectorbuilder.Resource, pToken *pagination.Token) ([]*connectorbuilder.Grant, string, error) {
+func (s *groupSyncer) Grants(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Grant, string, error) {
 	return nil, "", nil
 }
-

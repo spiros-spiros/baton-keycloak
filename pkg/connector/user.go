@@ -4,8 +4,8 @@ package connector
 import (
 	"context"
 
-	"github.com/spiros-spiros/baton-keycloak/pkg/keycloak"
-	"github.com/conductorone/baton-sdk/pkg/connectorbuilder"
+	"github.com/conductorone/baton-keycloak/pkg/keycloak"
+	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
 )
 
@@ -19,37 +19,45 @@ func newUserSyncer(client *keycloak.Client) *userSyncer {
 	}
 }
 
-func (s *userSyncer) ResourceType(ctx context.Context) *connectorbuilder.ResourceType {
-	return &connectorbuilder.ResourceType{
-		ID:          "user",
+func (s *userSyncer) ResourceType(ctx context.Context) *v2.ResourceType {
+	return &v2.ResourceType{
+		Id:          "user",
 		DisplayName: "User",
-		TraitOptions: []connectorbuilder.TraitOption{
-			connectorbuilder.WithUserTrait(),
+		TraitOptions: []*v2.ResourceTypeTraitOption{
+			{
+				Trait: &v2.ResourceTypeTrait{
+					Id: "user",
+				},
+			},
 		},
 	}
 }
 
-func (s *userSyncer) List(ctx context.Context, parentResourceID *connectorbuilder.ResourceID, pToken *pagination.Token) ([]*connectorbuilder.Resource, string, error) {
+func (s *userSyncer) List(ctx context.Context, parentResourceID *v2.ResourceId, pToken *pagination.Token) ([]*v2.Resource, string, error) {
 	users, err := s.client.GetUsers(ctx)
 	if err != nil {
 		return nil, "", err
 	}
 
-	var resources []*connectorbuilder.Resource
+	var resources []*v2.Resource
 	for _, user := range users {
-		resource := &connectorbuilder.Resource{
-			ID: &connectorbuilder.ResourceID{
+		resource := &v2.Resource{
+			Id: &v2.ResourceId{
 				ResourceType: "user",
 				Resource:     *user.ID,
 			},
 			DisplayName: *user.Username,
-			Traits: []connectorbuilder.Trait{
-				&connectorbuilder.UserTrait{
-					// we need all of this to look up in C1, otherwise we might miss users - since they're not federated with our IdP!!!!!
-					Email:     *user.Email,
-					Username:  *user.Username,
-					FirstName: *user.FirstName,
-					LastName:  *user.LastName,
+			Traits: []*v2.ResourceTrait{
+				{
+					Id: "user",
+					Trait: &v2.ResourceTrait_UserTrait{
+						UserTrait: &v2.UserTrait{
+							Email:     *user.Email,
+							Username:  *user.Username,
+							FirstName: *user.FirstName,
+							LastName:  *user.LastName,
+						},
+					},
 				},
 			},
 		}
@@ -59,11 +67,10 @@ func (s *userSyncer) List(ctx context.Context, parentResourceID *connectorbuilde
 	return resources, "", nil
 }
 
-func (s *userSyncer) Entitlements(ctx context.Context, resource *connectorbuilder.Resource, pToken *pagination.Token) ([]*connectorbuilder.Entitlement, string, error) {
+func (s *userSyncer) Entitlements(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Entitlement, string, error) {
 	return nil, "", nil
 }
 
-func (s *userSyncer) Grants(ctx context.Context, resource *connectorbuilder.Resource, pToken *pagination.Token) ([]*connectorbuilder.Grant, string, error) {
+func (s *userSyncer) Grants(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Grant, string, error) {
 	return nil, "", nil
 }
-

@@ -55,4 +55,3 @@ func (c *Client) GetUserGroups(ctx context.Context, userID string) ([]*gocloak.G
 func (c *Client) Close() error {
 	return nil
 }
-

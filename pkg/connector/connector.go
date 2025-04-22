@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/spiros-spiros/baton-keycloak/pkg/keycloak"
+	"github.com/conductorone/baton-keycloak/pkg/keycloak"
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/connectorbuilder"
 )
@@ -28,10 +28,10 @@ func (c *Connector) Asset(ctx context.Context, asset *v2.AssetRef) (string, io.R
 }
 
 // Metadata returns metadata about the connector for C1 in the logs and whatnot. It will also display in the UI. Sadly emojis are not supported.
-func (c *Connector) Metadata(ctx context.Context) (*connectorbuilder.Metadata, error) {
-	return &connectorbuilder.Metadata{
-		Name:        "keycloak",
+func (c *Connector) Metadata(ctx context.Context) (*v2.ConnectorMetadata, error) {
+	return &v2.ConnectorMetadata{
 		DisplayName: "Keycloak",
+		Description: "A connector for Keycloak identity and access management",
 	}, nil
 }
 
