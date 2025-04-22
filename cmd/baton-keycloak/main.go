@@ -8,8 +8,9 @@ import (
 	"os"
 
 	"github.com/spiros-spiros/baton-keycloak/pkg/connector"
-	"github.com/conductorone/baton-sdk/pkg/logging"
+	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -20,13 +21,13 @@ func main() {
 		Short: "Baton Keycloak connector",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			logger := logging.FromContext(ctx)
+			logger := ctxzap.Extract(ctx)
 
 			connector.RegisterCmd(cmd)
 
 			err := cmd.Execute()
 			if err != nil {
-				logger.Error().Err(err).Msg("error running connector")
+				logger.Error("error running connector", zap.Error(err))
 				return err
 			}
 
