@@ -5,10 +5,11 @@ import (
 	"fmt"
 
 	"github.com/conductorone/baton-sdk/pkg/connectorbuilder"
-	"github.com/conductorone/baton-sdk/pkg/logging"
+	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/spiros-spiros/baton-keycloak/pkg/keycloak"
+	"go.uber.org/zap"
 )
 
 var configRequiredFlags = []string{"keycloak-server-url", "keycloak-realm", "keycloak-client-id", "keycloak-client-secret"}
@@ -53,7 +54,7 @@ func RegisterCmd(parent *cobra.Command) {
 		Short: "Keycloak connector",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			logger := logging.NewLogger()
+			logger := ctxzap.Extract(ctx)
 
 			err := config.Load()
 			if err != nil {
@@ -70,14 +71,15 @@ func RegisterCmd(parent *cobra.Command) {
 				return err
 			}
 
-			builder, err := connectorbuilder.NewConnector(ctx, connector)
+			server, err := connectorbuilder.NewConnector(ctx, connector)
 			if err != nil {
-				logger.Error().Err(err).Msg("error creating connector")
+				logger.Error("error creating connector", zap.Error(err))
 				return err
 			}
 
-			if err := builder.Run(ctx); err != nil {
-				logger.Error().Err(err).Msg("error running connector")
+			// Start the connector server
+			if err := server.Serve(ctx); err != nil {
+				logger.Error("error running connector", zap.Error(err))
 				return err
 			}
 
