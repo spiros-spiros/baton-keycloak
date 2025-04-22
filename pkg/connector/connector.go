@@ -45,7 +45,7 @@ func (c *Connector) Close() error {
 	return c.client.Close()
 }
 
-// actually make the Keycloak connector.
+// New creates a new Keycloak connector.
 func New(client *keycloak.Client) *Connector {
 	return &Connector{
 		client: client,

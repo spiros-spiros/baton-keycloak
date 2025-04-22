@@ -2,8 +2,8 @@ package connector
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/conductorone/baton-sdk/pkg/cli"
 	"github.com/conductorone/baton-sdk/pkg/connectorbuilder"
 	"github.com/conductorone/baton-sdk/pkg/logging"
 	"github.com/spf13/cobra"
@@ -23,7 +23,7 @@ type Config struct {
 func (c *Config) Validate() error {
 	for _, f := range configRequiredFlags {
 		if viper.GetString(f) == "" {
-			return cli.NewRequiredFlagError(f)
+			return fmt.Errorf("required flag %s is not set", f)
 		}
 	}
 	return nil
@@ -37,9 +37,9 @@ func (c *Config) Load() error {
 	return nil
 }
 
-func New(ctx context.Context, cfg *Config) (*Connector, error) {
-	client, err := keycloak.NewClient(ctx, cfg.ServerURL, cfg.Realm, cfg.ClientID, cfg.ClientSecret)
-	if err != nil {
+func NewConnector(ctx context.Context, cfg *Config) (*Connector, error) {
+	client := keycloak.NewClient(cfg.ServerURL, cfg.Realm, cfg.ClientID, cfg.ClientSecret)
+	if err := client.Connect(ctx); err != nil {
 		return nil, err
 	}
 
@@ -53,7 +53,7 @@ func RegisterCmd(parent *cobra.Command) {
 		Short: "Keycloak connector",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			logger := logging.FromContext(ctx)
+			logger := logging.NewLogger()
 
 			err := config.Load()
 			if err != nil {
@@ -65,7 +65,7 @@ func RegisterCmd(parent *cobra.Command) {
 				return err
 			}
 
-			connector, err := New(ctx, config)
+			connector, err := NewConnector(ctx, config)
 			if err != nil {
 				return err
 			}
@@ -95,4 +95,3 @@ func RegisterCmd(parent *cobra.Command) {
 
 	parent.AddCommand(cmd)
 }
-
