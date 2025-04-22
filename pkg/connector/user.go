@@ -25,18 +25,20 @@ func (s *userSyncer) ResourceType(ctx context.Context) *v2.ResourceType {
 		Id:          "user",
 		DisplayName: "User",
 		Description: "A user from Keycloak",
-		TraitTypes: []*v2.ResourceTypeTraitType{
+		TraitOptions: []*v2.ResourceTypeTraitOption{
 			{
-				Id: "user",
+				Trait: &v2.ResourceTypeTrait{
+					Id: "user",
+				},
 			},
 		},
 	}
 }
 
-func (s *userSyncer) List(ctx context.Context, parentResourceID *v2.ResourceId, pToken *pagination.Token) ([]*v2.Resource, string, error) {
+func (s *userSyncer) List(ctx context.Context, parentResourceID *v2.ResourceId, pToken *pagination.Token) ([]*v2.Resource, string, annotations.Annotations, error) {
 	users, err := s.client.GetUsers(ctx)
 	if err != nil {
-		return nil, "", err
+		return nil, "", nil, err
 	}
 
 	var resources []*v2.Resource
@@ -48,22 +50,24 @@ func (s *userSyncer) List(ctx context.Context, parentResourceID *v2.ResourceId, 
 			},
 			DisplayName: *user.Username,
 			Description: "Keycloak User",
-			TraitTypes: []*v2.ResourceTraitType{
+			Traits: []*v2.ResourceTrait{
 				{
 					Id: "user",
+					Trait: &v2.ResourceTrait_UserTrait{
+						UserTrait: &v2.UserTrait{
+							Email:     *user.Email,
+							Username:  *user.Username,
+							FirstName: *user.FirstName,
+							LastName:  *user.LastName,
+						},
+					},
 				},
-			},
-			UserTrait: &v2.UserTrait{
-				Email:     *user.Email,
-				Username:  *user.Username,
-				FirstName: *user.FirstName,
-				LastName:  *user.LastName,
 			},
 		}
 		resources = append(resources, resource)
 	}
 
-	return resources, "", nil
+	return resources, "", nil, nil
 }
 
 func (s *userSyncer) Entitlements(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Entitlement, string, annotations.Annotations, error) {
