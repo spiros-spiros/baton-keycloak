@@ -70,14 +70,8 @@ func RegisterCmd(parent *cobra.Command) {
 				return err
 			}
 
-			builder, err := connectorbuilder.NewConnector(ctx, connector)
-			if err != nil {
-				logger.Error().Err(err).Msg("error creating connector builder")
-				return err
-			}
-
-			err = builder.Run(ctx)
-			if err != nil {
+			builder := connectorbuilder.NewConnectorBuilder(connector)
+			if err := builder.Run(ctx); err != nil {
 				logger.Error().Err(err).Msg("error running connector")
 				return err
 			}
