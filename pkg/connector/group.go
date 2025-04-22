@@ -3,8 +3,9 @@ package connector
 import (
 	"context"
 	// the conductor one SDKs are already built, so this bit should be easy
-	"github.com/conductorone/baton-keycloak/pkg/keycloak"
+	"github.com/spiros-spiros/baton-keycloak/pkg/keycloak"
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
+	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
 )
 
@@ -23,11 +24,10 @@ func (s *groupSyncer) ResourceType(ctx context.Context) *v2.ResourceType {
 	return &v2.ResourceType{
 		Id:          "group",
 		DisplayName: "Group",
-		TraitOptions: []*v2.ResourceTypeTraitOption{
+		Description: "A group from Keycloak",
+		TraitTypes: []*v2.ResourceTypeTraitType{
 			{
-				Trait: &v2.ResourceTypeTrait{
-					Id: "group",
-				},
+				Id: "group",
 			},
 		},
 	}
@@ -47,15 +47,14 @@ func (s *groupSyncer) List(ctx context.Context, parentResourceID *v2.ResourceId,
 				Resource:     *group.ID,
 			},
 			DisplayName: *group.Name,
-			Traits: []*v2.ResourceTrait{
+			Description: "Keycloak Group",
+			TraitTypes: []*v2.ResourceTraitType{
 				{
 					Id: "group",
-					Trait: &v2.ResourceTrait_GroupTrait{
-						GroupTrait: &v2.GroupTrait{
-							Name: *group.Name,
-						},
-					},
 				},
+			},
+			GroupTrait: &v2.GroupTrait{
+				DisplayName: *group.Name,
 			},
 		}
 		resources = append(resources, resource)
@@ -65,11 +64,11 @@ func (s *groupSyncer) List(ctx context.Context, parentResourceID *v2.ResourceId,
 }
 
 // get groups
-func (s *groupSyncer) Entitlements(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Entitlement, string, error) {
-	return nil, "", nil
+func (s *groupSyncer) Entitlements(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Entitlement, string, annotations.Annotations, error) {
+	return nil, "", nil, nil
 }
 
 // now get entitlements
-func (s *groupSyncer) Grants(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Grant, string, error) {
-	return nil, "", nil
+func (s *groupSyncer) Grants(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
+	return nil, "", nil, nil
 }

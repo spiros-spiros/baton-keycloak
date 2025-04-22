@@ -6,6 +6,7 @@ import (
 
 	"github.com/spiros-spiros/baton-keycloak/pkg/keycloak"
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
+	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/connectorbuilder"
 )
 
@@ -31,13 +32,13 @@ func (c *Connector) Asset(ctx context.Context, asset *v2.AssetRef) (string, io.R
 func (c *Connector) Metadata(ctx context.Context) (*v2.ConnectorMetadata, error) {
 	return &v2.ConnectorMetadata{
 		DisplayName: "Keycloak",
-		Description: "A connector for Keycloak identity and access management",
+		Description: "Connector syncing users and groups from Keycloak",
 	}, nil
 }
 
 // Validate is called to ensure that the connector is properly configured. It should test API credentials
-func (c *Connector) Validate(ctx context.Context) error {
-	return c.client.Connect(ctx)
+func (c *Connector) Validate(ctx context.Context) (annotations.Annotations, error) {
+	return nil, nil
 }
 
 func (c *Connector) Close() error {
