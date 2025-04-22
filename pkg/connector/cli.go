@@ -53,7 +53,7 @@ func RegisterCmd(parent *cobra.Command) {
 		Short: "Keycloak connector",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			logger := logging.NewLogger()
+			logger := logging.FromContext(ctx)
 
 			err := config.Load()
 			if err != nil {
