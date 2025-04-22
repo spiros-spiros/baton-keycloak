@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/conductorone/baton-keycloak/pkg/keycloak"
+	"github.com/spiros-spiros/baton-keycloak/pkg/keycloak"
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/connectorbuilder"
 )
