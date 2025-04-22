@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/conductorone/baton-sdk/pkg/connectorbuilder"
+	"github.com/conductorone/baton-sdk/pkg/connectorrunner"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -77,8 +78,13 @@ func RegisterCmd(parent *cobra.Command) {
 				return err
 			}
 
-			// Start the connector server
-			if err := server.Serve(ctx); err != nil {
+			runner, err := connectorrunner.NewConnectorRunner(ctx, server)
+			if err != nil {
+				logger.Error("error creating connector runner", zap.Error(err))
+				return err
+			}
+
+			if err := runner.Run(ctx); err != nil {
 				logger.Error("error running connector", zap.Error(err))
 				return err
 			}
