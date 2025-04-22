@@ -53,7 +53,7 @@ func RegisterCmd(parent *cobra.Command) {
 		Short: "Keycloak connector",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			logger := logging.FromContext(ctx)
+			logger := logging.NewLogger()
 
 			err := config.Load()
 			if err != nil {
@@ -70,7 +70,12 @@ func RegisterCmd(parent *cobra.Command) {
 				return err
 			}
 
-			builder := connectorbuilder.NewConnectorBuilder(connector)
+			builder, err := connectorbuilder.NewConnector(ctx, connector)
+			if err != nil {
+				logger.Error().Err(err).Msg("error creating connector")
+				return err
+			}
+
 			if err := builder.Run(ctx); err != nil {
 				logger.Error().Err(err).Msg("error running connector")
 				return err
