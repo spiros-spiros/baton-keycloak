@@ -1,70 +1,118 @@
 package connector
 
-//same thing but for users now since we need both
 import (
 	"context"
 
-	"github.com/spiros-spiros/baton-keycloak/pkg/keycloak"
+	"github.com/Nerzal/gocloak/v13"
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
 	"github.com/conductorone/baton-sdk/pkg/types/resource"
+	"github.com/spiros-spiros/baton-keycloak/pkg/keycloak"
 )
 
-type userSyncer struct {
-	client *keycloak.Client
+// userBuilder implements the resource builder interface for Keycloak user resources.
+// It handles the creation and synchronization of user resources between Keycloak and Baton.
+type userBuilder struct {
+	resourceType *v2.ResourceType
+	client       *keycloak.Client
 }
 
-func newUserSyncer(client *keycloak.Client) *userSyncer {
-	return &userSyncer{
-		client: client,
-	}
+// ResourceType returns the v2.ResourceType for users.
+// This identifies the type of resources this builder manages.
+func (o *userBuilder) ResourceType(ctx context.Context) *v2.ResourceType {
+	return userResourceType
 }
 
-func (s *userSyncer) ResourceType(ctx context.Context) *v2.ResourceType {
-	return &v2.ResourceType{
-		Id:          "user",
-		DisplayName: "User",
-		Description: "A user from Keycloak",
-		Traits:      []v2.ResourceType_Trait{v2.ResourceType_TRAIT_USER},
-	}
-}
+// List retrieves all user resources from Keycloak and converts them to the Baton format.
+// Parameters:
+//   - ctx: Context for cancellation and timeouts
+//   - parentResourceID: The parent resource ID (unused in this implementation)
+//   - pToken: Pagination token for handling large result sets
+//
+// Returns:
+//   - []*v2.Resource: List of user resources
+//   - string: Next page token for pagination
+//   - annotations.Annotations: Additional metadata
+//   - error: Any error that occurred during the operation
+func (o *userBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId, pToken *pagination.Token) ([]*v2.Resource, string, annotations.Annotations, error) {
+	var resource []*v2.Resource
+	annos := annotations.Annotations{}
 
-func (s *userSyncer) List(ctx context.Context, parentResourceID *v2.ResourceId, pToken *pagination.Token) ([]*v2.Resource, string, annotations.Annotations, error) {
-	users, err := s.client.GetUsers(ctx)
+	users, err := o.client.GetUsers(ctx)
 	if err != nil {
 		return nil, "", nil, err
 	}
 
-	var resources []*v2.Resource
 	for _, user := range users {
-		profile := map[string]interface{}{
-			"email":     *user.Email,
-			"username":  *user.Username,
-			"firstName": *user.FirstName,
-			"lastName":  *user.LastName,
-		}
-		resource, err := resource.NewUserResource(
-			*user.Username,
-			s.ResourceType(ctx),
-			*user.ID,
-			[]resource.UserTraitOption{
-				resource.WithUserProfile(profile),
-			},
-		)
+		userResource, err := parseIntoUserResource(user, nil)
 		if err != nil {
 			return nil, "", nil, err
 		}
-		resources = append(resources, resource)
+		resource = append(resource, userResource)
 	}
 
-	return resources, "", nil, nil
+	return resource, "", annos, nil
 }
 
-func (s *userSyncer) Entitlements(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Entitlement, string, annotations.Annotations, error) {
+// Entitlements returns empty as users don't have direct entitlements in this implementation.
+// Entitlements are managed separately by the permissionBuilder.
+func (o *userBuilder) Entitlements(ctx context.Context, resource *v2.Resource, _ *pagination.Token) ([]*v2.Entitlement, string, annotations.Annotations, error) {
 	return nil, "", nil, nil
 }
 
-func (s *userSyncer) Grants(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
+// Grants returns empty as this builder doesn't handle grants directly.
+// Grants are managed separately by the permissionBuilder.
+func (o *userBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
 	return nil, "", nil, nil
+}
+
+// newUserBuilder creates a new instance of userBuilder.
+// This is the constructor function for the userBuilder struct.
+func newUserBuilder(client *keycloak.Client) *userBuilder {
+	return &userBuilder{
+		resourceType: userResourceType,
+		client:       client,
+	}
+}
+
+// parseIntoUserResource converts a Linode user object into a Baton SDK user resource.
+// Parameters:
+//   - ctx: Context (currently unused)
+//   - user: Pointer to the Linode user object to convert
+//   - parentResourceID: Optional parent resource ID for hierarchy
+//
+// Returns:
+//   - *v2.Resource: The converted Baton resource
+//   - error: Any conversion error that occurred
+func parseIntoUserResource(user *gocloak.User, parentResourceID *v2.ResourceId) (*v2.Resource, error) {
+	var userStatus = v2.UserTrait_Status_STATUS_ENABLED
+
+	profile := map[string]interface{}{
+		"username":  user.Username,
+		"email":     user.Email,
+		"firstName": user.FirstName,
+		"lastName":  user.LastName,
+	}
+
+	userTraits := []resource.UserTraitOption{
+		resource.WithUserProfile(profile),
+		resource.WithUserLogin(*user.Username),
+		resource.WithStatus(userStatus),
+	}
+
+	displayName := *user.Username
+
+	ret, err := resource.NewUserResource(
+		displayName,
+		userResourceType,
+		*user.Username,
+		userTraits,
+		resource.WithParentResourceID(parentResourceID),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return ret, nil
 }

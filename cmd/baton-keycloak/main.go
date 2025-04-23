@@ -19,17 +19,17 @@ import (
 )
 
 var (
-	apiUrlField       = field.StringField("api_url", field.WithDescription("The URL of the Keycloak server"), field.WithRequired(true))
-	realmField        = field.StringField("realm", field.WithDescription("The realm to connect to"), field.WithRequired(true))
-	clientField       = field.StringField("client_id", field.WithDescription("The client ID to use for authentication"), field.WithRequired(true))
-	clientSecretField = field.StringField("client_secret", field.WithDescription("The client secret to use for authentication"), field.WithRequired(true))
+	apiUrlField               = field.StringField("api_url", field.WithDescription("The URL of the Keycloak server"), field.WithRequired(true))
+	realmField                = field.StringField("realm", field.WithDescription("The realm to connect to"), field.WithRequired(true))
+	keycloakclientField       = field.StringField("keycloak_client_id", field.WithDescription("The client ID to use for authentication"), field.WithRequired(true))
+	keycloakclientSecretField = field.StringField("keycloak_client_secret", field.WithDescription("The client secret to use for authentication"), field.WithRequired(true))
 )
 
 var configuration = field.NewConfiguration([]field.SchemaField{
 	apiUrlField,
 	realmField,
-	clientField,
-	clientSecretField,
+	keycloakclientField,
+	keycloakclientSecretField,
 })
 
 var version = "dev"
@@ -65,8 +65,8 @@ func getConnector(ctx context.Context, v *viper.Viper) (types.ConnectorServer, e
 
 	keycloakServerURL := v.GetString(apiUrlField.FieldName)
 	keycloakRealm := v.GetString(realmField.FieldName)
-	keycloakClientID := v.GetString(clientField.FieldName)
-	keycloakClientSecret := v.GetString(clientSecretField.FieldName)
+	keycloakClientID := v.GetString(keycloakclientField.FieldName)
+	keycloakClientSecret := v.GetString(keycloakclientSecretField.FieldName)
 
 	cb, err := connectorSchema.New(ctx, keycloakServerURL, keycloakRealm, keycloakClientID, keycloakClientSecret)
 	if err != nil {
