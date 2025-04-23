@@ -4,10 +4,12 @@ import (
 	"context"
 	"io"
 
-	"github.com/spiros-spiros/baton-keycloak/pkg/keycloak"
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/connectorbuilder"
+	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
+	"github.com/spiros-spiros/baton-keycloak/pkg/keycloak"
+	"go.uber.org/zap"
 )
 
 type Connector struct {
@@ -48,13 +50,13 @@ func (c *Connector) Close() error {
 // Actually create a Keycloak connector.
 func New(ctx context.Context, keycloakServerURL string, keycloakRealm string, keycloakClientID string, keycloakClientSecret string) (*Connector, error) {
 	l := ctxzap.Extract(ctx)
-	client, err := client.New(ctx, client.NewClient(ctx, keycloakServerURL, keycloakRealm, keycloakClientID, keycloakClientSecret))
-	if err != nil {
+	keycloakClient := keycloak.NewClient(keycloakServerURL, keycloakRealm, keycloakClientID, keycloakClientSecret)
+	if err := keycloakClient.Connect(ctx); err != nil {
 		l.Error("error creating Keycloak client for some reason", zap.Error(err))
 		return nil, err
 	}
 
 	return &Connector{
-		client: client,
+		client: keycloakClient,
 	}, nil
 }
