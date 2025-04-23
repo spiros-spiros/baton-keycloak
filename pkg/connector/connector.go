@@ -45,9 +45,16 @@ func (c *Connector) Close() error {
 	return c.client.Close()
 }
 
-// New creates a new Keycloak connector.
-func New(client *keycloak.Client) *Connector {
+// Actually create a Keycloak connector.
+func New(ctx context.Context, keycloakServerURL string, keycloakRealm string, keycloakClientID string, keycloakClientSecret string) (*Connector, error) {
+	l := ctxzap.Extract(ctx)
+	client, err := client.New(ctx, client.NewClient(ctx, keycloakServerURL, keycloakRealm, keycloakClientID, keycloakClientSecret))
+	if err != nil {
+		l.Error("error creating Keycloak client for some reason", zap.Error(err))
+		return nil, err
+	}
+
 	return &Connector{
 		client: client,
-	}
+	}, nil
 }

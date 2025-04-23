@@ -31,10 +31,12 @@ RUN adduser -D -g '' appuser
 USER appuser
 
 # Set environment variables
-ENV KEYCLOAK_SERVER_URL=""
-ENV KEYCLOAK_REALM=""
-ENV KEYCLOAK_CLIENT_ID=""
-ENV KEYCLOAK_CLIENT_SECRET=""
+ENV KEYCLOAK_SERVER_URL="https://auth.dev.wcs.api.weaviate.io"
+ENV KEYCLOAK_REALM="master"
+ENV KEYCLOAK_CLIENT_ID="conductor-one-spiros"
+ENV KEYCLOAK_CLIENT_SECRET="rTO2fzOydikCwZu8bdbYScoWlt4urPbZ"
+ENV BATON_CLIENT_ID="aggressive-gorgon-76791@weaviate.conductor.one/ccc"
+ENV BATON_CLIENT_SECRET="secret-token:conductorone.com:v1:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6IldBTmFWaHphLXRLZ3RjV2NRTzhsRkdFbms4RUFVbWhRLTZmUXJBWFRUbkEiLCJkIjoiTGY5TFozdXRCLVNjTmY0M3lHMDJpcXZ2NmV1ZmxoYl9CV0M3alRBcXFHOCJ9"
 
 # Run the application
 ENTRYPOINT ["./baton-keycloak"]
