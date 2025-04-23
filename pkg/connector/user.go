@@ -88,25 +88,28 @@ func newUserBuilder(client *keycloak.Client) *userBuilder {
 func parseIntoUserResource(user *gocloak.User, parentResourceID *v2.ResourceId) (*v2.Resource, error) {
 	var userStatus = v2.UserTrait_Status_STATUS_ENABLED
 
+	username := ""
+	if user.Username != nil {
+		username = *user.Username
+	}
+
 	profile := map[string]interface{}{
-		"username":  user.Username,
-		"email":     user.Email,
-		"firstName": user.FirstName,
-		"lastName":  user.LastName,
+		"username":  username,
+		"email":     safeString(user.Email),
+		"firstName": safeString(user.FirstName),
+		"lastName":  safeString(user.LastName),
 	}
 
 	userTraits := []resource.UserTraitOption{
 		resource.WithUserProfile(profile),
-		resource.WithUserLogin(*user.Username),
+		resource.WithUserLogin(username),
 		resource.WithStatus(userStatus),
 	}
 
-	displayName := *user.Username
-
 	ret, err := resource.NewUserResource(
-		displayName,
+		username,
 		userResourceType,
-		*user.Username,
+		username,
 		userTraits,
 		resource.WithParentResourceID(parentResourceID),
 	)
@@ -115,4 +118,11 @@ func parseIntoUserResource(user *gocloak.User, parentResourceID *v2.ResourceId) 
 	}
 
 	return ret, nil
+}
+
+func safeString(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
