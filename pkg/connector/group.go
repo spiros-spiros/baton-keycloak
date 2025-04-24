@@ -158,13 +158,13 @@ func (o *groupBuilder) Grant(ctx context.Context, resource *v2.Resource, entitle
 	}
 	fmt.Printf("DEBUG: Extracted group ID: %s\n", groupID)
 
-	// Get the user ID from the resource
-	userID := resource.Id.Resource
-	if userID == "" {
-		fmt.Printf("DEBUG: User ID not found in resource\n")
-		return nil, nil, fmt.Errorf("user ID not found in resource")
+	// Get the username from the resource
+	username := resource.Id.Resource
+	if username == "" {
+		fmt.Printf("DEBUG: Username not found in resource\n")
+		return nil, nil, fmt.Errorf("username not found in resource")
 	}
-	fmt.Printf("DEBUG: Extracted user ID: %s\n", userID)
+	fmt.Printf("DEBUG: Extracted username: %s\n", username)
 
 	// Verify the user exists
 	fmt.Printf("DEBUG: Fetching all users to verify user exists\n")
@@ -175,23 +175,23 @@ func (o *groupBuilder) Grant(ctx context.Context, resource *v2.Resource, entitle
 	}
 	fmt.Printf("DEBUG: Found %d total users\n", len(users))
 
-	var userFound bool
+	var userID string
 	for _, user := range users {
-		fmt.Printf("DEBUG: Checking user ID: %s\n", *user.ID)
-		if *user.ID == userID {
-			userFound = true
-			fmt.Printf("DEBUG: Found matching user with username: %s\n", *user.Username)
+		fmt.Printf("DEBUG: Checking user username: %s\n", *user.Username)
+		if *user.Username == username {
+			userID = *user.ID
+			fmt.Printf("DEBUG: Found matching user with ID: %s\n", userID)
 			break
 		}
 	}
 
-	if !userFound {
+	if userID == "" {
 		fmt.Printf("DEBUG: User not found in Keycloak\n")
-		return nil, nil, fmt.Errorf("user not found: %s", userID)
+		return nil, nil, fmt.Errorf("user not found: %s", username)
 	}
 
 	// Add user to group
-	fmt.Printf("DEBUG: Attempting to add user %s to group %s\n", userID, groupID)
+	fmt.Printf("DEBUG: Attempting to add user %s (ID: %s) to group %s\n", username, userID, groupID)
 	err = o.client.client.AddUserToGroup(ctx, userID, groupID)
 	if err != nil {
 		fmt.Printf("DEBUG: Failed to add user to group: %v\n", err)
