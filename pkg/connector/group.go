@@ -137,16 +137,27 @@ func (o *groupBuilder) Grant(ctx context.Context, resource *v2.Resource, entitle
 		return nil, nil, err
 	}
 
-	// Extract user ID from the entitlement ID
-	// Format should be: user:<userID>:group:<groupID>:membership
+	// The entitlement ID should be in the format: group:<groupID>:membership
 	parts := strings.Split(entitlement.Id, ":")
-	if len(parts) < 4 {
+	if len(parts) != 3 || parts[0] != "group" || parts[2] != "membership" {
 		return nil, nil, fmt.Errorf("invalid entitlement ID format: %s", entitlement.Id)
 	}
 
-	userID := parts[1]
+	// Get the user ID from the entitlement's GrantableTo field
+	if len(entitlement.GrantableTo) == 0 {
+		return nil, nil, fmt.Errorf("entitlement GrantableTo is empty")
+	}
+
+	// The first GrantableTo resource type should be the user
+	userResourceType := entitlement.GrantableTo[0]
+	if userResourceType.Id != "user" {
+		return nil, nil, fmt.Errorf("invalid GrantableTo resource type: %s", userResourceType.Id)
+	}
+
+	// Get the user ID from the resource
+	userID := resource.Id.Resource
 	if userID == "" {
-		return nil, nil, fmt.Errorf("user ID not found in entitlement ID")
+		return nil, nil, fmt.Errorf("user ID not found in resource")
 	}
 
 	// Add user to group
