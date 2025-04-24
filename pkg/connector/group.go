@@ -9,12 +9,11 @@ import (
 	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
 	"github.com/conductorone/baton-sdk/pkg/types/resource"
-	"github.com/spiros-spiros/baton-keycloak/pkg/keycloak"
 )
 
 type groupBuilder struct {
 	resourceType *v2.ResourceType
-	client       *keycloak.Client
+	client       *Connector
 }
 
 func (o *groupBuilder) ResourceType(ctx context.Context) *v2.ResourceType {
@@ -25,7 +24,11 @@ func (o *groupBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId
 	var resources []*v2.Resource
 	annos := annotations.Annotations{}
 
-	groups, err := o.client.GetGroups(ctx)
+	if err := o.client.ensureConnected(ctx); err != nil {
+		return nil, "", nil, err
+	}
+
+	groups, err := o.client.client.GetGroups(ctx)
 	if err != nil {
 		return nil, "", nil, err
 	}
@@ -43,6 +46,10 @@ func (o *groupBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId
 
 func (o *groupBuilder) Entitlements(ctx context.Context, resource *v2.Resource, _ *pagination.Token) ([]*v2.Entitlement, string, annotations.Annotations, error) {
 	var entitlements []*v2.Entitlement
+
+	if err := o.client.ensureConnected(ctx); err != nil {
+		return nil, "", nil, err
+	}
 
 	// Create a membership entitlement for the group
 	membershipEntitlement := &v2.Entitlement{
@@ -62,8 +69,12 @@ func (o *groupBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken
 	var grants []*v2.Grant
 	annos := annotations.Annotations{}
 
+	if err := o.client.ensureConnected(ctx); err != nil {
+		return nil, "", nil, err
+	}
+
 	// Get all users in this group directly
-	users, err := o.client.GetUsers(ctx)
+	users, err := o.client.client.GetUsers(ctx)
 	if err != nil {
 		return nil, "", nil, err
 	}
@@ -79,13 +90,13 @@ func (o *groupBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken
 	}
 
 	// Get users in this specific group
-	groupUsers, err := o.client.GetUsers(ctx)
+	groupUsers, err := o.client.client.GetUsers(ctx)
 	if err != nil {
 		return nil, "", nil, err
 	}
 
 	for _, user := range groupUsers {
-		userGroups, err := o.client.GetUserGroups(ctx, *user.ID)
+		userGroups, err := o.client.client.GetUserGroups(ctx, *user.ID)
 		if err != nil {
 			return nil, "", nil, err
 		}
@@ -150,7 +161,7 @@ func parseIntoGroupResource(group *gocloak.Group, parentResourceID *v2.ResourceI
 	return ret, nil
 }
 
-func newGroupBuilder(client *keycloak.Client) *groupBuilder {
+func newGroupBuilder(client *Connector) *groupBuilder {
 	return &groupBuilder{
 		resourceType: groupResourceType,
 		client:       client,

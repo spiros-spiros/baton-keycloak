@@ -9,14 +9,13 @@ import (
 	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
 	"github.com/conductorone/baton-sdk/pkg/types/resource"
-	"github.com/spiros-spiros/baton-keycloak/pkg/keycloak"
 )
 
 // userBuilder implements the resource builder interface for Keycloak user resources.
 // It handles the creation and synchronization of user resources between Keycloak and Baton.
 type userBuilder struct {
 	resourceType *v2.ResourceType
-	client       *keycloak.Client
+	client       *Connector
 }
 
 // ResourceType returns the v2.ResourceType for users.
@@ -40,7 +39,11 @@ func (o *userBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId,
 	var resource []*v2.Resource
 	annos := annotations.Annotations{}
 
-	users, err := o.client.GetUsers(ctx)
+	if err := o.client.ensureConnected(ctx); err != nil {
+		return nil, "", nil, err
+	}
+
+	users, err := o.client.client.GetUsers(ctx)
 	if err != nil {
 		return nil, "", nil, err
 	}
@@ -70,8 +73,12 @@ func (o *userBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId,
 func (o *userBuilder) Entitlements(ctx context.Context, resource *v2.Resource, _ *pagination.Token) ([]*v2.Entitlement, string, annotations.Annotations, error) {
 	var entitlements []*v2.Entitlement
 
+	if err := o.client.ensureConnected(ctx); err != nil {
+		return nil, "", nil, err
+	}
+
 	// Get the user by username to get their ID
-	users, err := o.client.GetUsers(ctx)
+	users, err := o.client.client.GetUsers(ctx)
 	if err != nil {
 		return nil, "", nil, err
 	}
@@ -89,7 +96,7 @@ func (o *userBuilder) Entitlements(ctx context.Context, resource *v2.Resource, _
 	}
 
 	// Get all groups the user is a member of
-	groups, err := o.client.GetUserGroups(ctx, userID)
+	groups, err := o.client.client.GetUserGroups(ctx, userID)
 	if err != nil {
 		return nil, "", nil, err
 	}
@@ -131,8 +138,12 @@ func (o *userBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken 
 	var grants []*v2.Grant
 	annos := annotations.Annotations{}
 
+	if err := o.client.ensureConnected(ctx); err != nil {
+		return nil, "", nil, err
+	}
+
 	// Get the user by username to get their ID
-	users, err := o.client.GetUsers(ctx)
+	users, err := o.client.client.GetUsers(ctx)
 	if err != nil {
 		return nil, "", nil, err
 	}
@@ -150,7 +161,7 @@ func (o *userBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken 
 	}
 
 	// Get all groups the user is a member of
-	groups, err := o.client.GetUserGroups(ctx, userID)
+	groups, err := o.client.client.GetUserGroups(ctx, userID)
 	if err != nil {
 		return nil, "", nil, err
 	}
@@ -182,7 +193,7 @@ func (o *userBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken 
 
 // newUserBuilder creates a new instance of userBuilder.
 // This is the constructor function for the userBuilder struct.
-func newUserBuilder(client *keycloak.Client) *userBuilder {
+func newUserBuilder(client *Connector) *userBuilder {
 	return &userBuilder{
 		resourceType: userResourceType,
 		client:       client,
