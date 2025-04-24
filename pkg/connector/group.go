@@ -131,6 +131,63 @@ func (o *groupBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken
 	return grants, "", annos, nil
 }
 
+func (o *groupBuilder) Grant(ctx context.Context, resource *v2.Resource, entitlement *v2.Entitlement) ([]*v2.Grant, annotations.Annotations, error) {
+	if err := o.client.ensureConnected(ctx); err != nil {
+		return nil, nil, err
+	}
+
+	// Extract user ID from the entitlement
+	userID := entitlement.Id
+	if userID == "" {
+		return nil, nil, fmt.Errorf("user ID not found in entitlement")
+	}
+
+	// Add user to group
+	err := o.client.client.AddUserToGroup(ctx, userID, resource.Id.Resource)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to add user to group: %w", err)
+	}
+
+	// Create and return the grant
+	grant := &v2.Grant{
+		Id: fmt.Sprintf("grant:%s:%s", resource.Id.Resource, userID),
+		Entitlement: &v2.Entitlement{
+			Id:          fmt.Sprintf("group:%s:membership", resource.Id.Resource),
+			DisplayName: fmt.Sprintf("Membership in %s", resource.DisplayName),
+			Description: fmt.Sprintf("Membership in the %s group", resource.DisplayName),
+			GrantableTo: []*v2.ResourceType{userResourceType},
+			Slug:        "membership",
+			Resource:    resource,
+		},
+		Principal: &v2.Resource{
+			Id: &v2.ResourceId{
+				ResourceType: userResourceType.Id,
+				Resource:     userID,
+			},
+		},
+	}
+
+	return []*v2.Grant{grant}, nil, nil
+}
+
+func (o *groupBuilder) Revoke(ctx context.Context, grant *v2.Grant) (annotations.Annotations, error) {
+	if err := o.client.ensureConnected(ctx); err != nil {
+		return nil, err
+	}
+
+	// Extract user ID and group ID from the grant
+	userID := grant.Principal.Id.Resource
+	groupID := grant.Entitlement.Resource.Id.Resource
+
+	// Remove user from group
+	err := o.client.client.RemoveUserFromGroup(ctx, userID, groupID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to remove user from group: %w", err)
+	}
+
+	return nil, nil
+}
+
 func parseIntoGroupResource(group *gocloak.Group, parentResourceID *v2.ResourceId) (*v2.Resource, error) {
 	profile := map[string]interface{}{
 		"name": safeString(group.Name),
