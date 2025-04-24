@@ -38,9 +38,9 @@ USER appuser
 ENV BATON_API_URL="https://auth.dev.wcs.api.weaviate.io/auth"
 ENV BATON_REALM="master"
 ENV BATON_KEYCLOAK_CLIENT_ID="conductor-one-spiros"
-ENV BATON_KEYCLOAK_CLIENT_SECRET="rTO2fzOydikCwZu8bdbYScoWlt4urPbZ"
-#ENV BATON_CLIENT_ID="aggressive-gorgon-76791@weaviate.conductor.one/ccc"
-#ENV BATON_CLIENT_SECRET="secret-token:conductorone.com:v1:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6IldBTmFWaHphLXRLZ3RjV2NRTzhsRkdFbms4RUFVbWhRLTZmUXJBWFRUbkEiLCJkIjoiTGY5TFozdXRCLVNjTmY0M3lHMDJpcXZ2NmV1ZmxoYl9CV0M3alRBcXFHOCJ9"
+ENV BATON_KEYCLOAK_CLIENT_SECRET="NEkTWB5LfxWk2wVUEWs9fLrteblhQBDt"
+ENV BATON_BATON_CLIENT_ID="quaint-zombie-26844@weaviate.conductor.one/ccc"
+ENV BATON_BATON_CLIENT_SECRET="secret-token:conductorone.com:v1:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6ImwxN2FDVzZkVTZ3bDl6UktEWmdQTXpKS2tPVGRQdUZEODFWbElyeXQxb2ciLCJkIjoiZVZaUHNmOHBrY2J3bV9MdTNTd29BQXFQWWVkLW9Bc0ZscmVJWUlYUG1wOCJ9"
 
 # Run the application
 ENTRYPOINT ["/app/baton-keycloak"]

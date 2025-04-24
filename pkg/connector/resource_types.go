@@ -10,8 +10,9 @@ var (
 		DisplayName: "User",
 		Traits:      []v2.ResourceType_Trait{v2.ResourceType_TRAIT_USER},
 	}
-	permissionResourceType = &v2.ResourceType{
-		Id:          "permission",
-		DisplayName: "Permission",
+	groupResourceType = &v2.ResourceType{
+		Id:          "group",
+		DisplayName: "Group",
+		Traits:      []v2.ResourceType_Trait{v2.ResourceType_TRAIT_GROUP},
 	}
 )

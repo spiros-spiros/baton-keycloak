@@ -2,6 +2,7 @@ package connector
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Nerzal/gocloak/v13"
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
@@ -55,16 +56,80 @@ func (o *userBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId,
 	return resource, "", annos, nil
 }
 
-// Entitlements returns empty as users don't have direct entitlements in this implementation.
-// Entitlements are managed separately by the permissionBuilder.
+// Entitlements returns entitlements for the user resource.
+// Parameters:
+//   - ctx: Context for cancellation and timeouts
+//   - resource: The user resource
+//   - pToken: Pagination token for handling large result sets
+//
+// Returns:
+//   - []*v2.Entitlement: List of entitlements for the user
+//   - string: Next page token for pagination
+//   - annotations.Annotations: Additional metadata
+//   - error: Any error that occurred during the operation
 func (o *userBuilder) Entitlements(ctx context.Context, resource *v2.Resource, _ *pagination.Token) ([]*v2.Entitlement, string, annotations.Annotations, error) {
-	return nil, "", nil, nil
+	var entitlements []*v2.Entitlement
+
+	// Get all groups the user is a member of
+	groups, err := o.client.GetUserGroups(ctx, resource.Id.Resource)
+	if err != nil {
+		return nil, "", nil, err
+	}
+
+	for _, group := range groups {
+		// Create an entitlement for each group membership
+		membershipEntitlement := &v2.Entitlement{
+			Id:          fmt.Sprintf("user:%s:group:%s", resource.Id.Resource, *group.ID),
+			DisplayName: fmt.Sprintf("Membership in %s", *group.Name),
+			Description: fmt.Sprintf("Membership in the %s group", *group.Name),
+			GrantableTo: []*v2.ResourceType{userResourceType},
+			Slug:        "membership",
+		}
+
+		entitlements = append(entitlements, membershipEntitlement)
+	}
+
+	return entitlements, "", nil, nil
 }
 
-// Grants returns empty as this builder doesn't handle grants directly.
-// Grants are managed separately by the permissionBuilder.
+// Grants returns grants for the user resource.
+// Parameters:
+//   - ctx: Context for cancellation and timeouts
+//   - resource: The user resource
+//   - pToken: Pagination token for handling large result sets
+//
+// Returns:
+//   - []*v2.Grant: List of grants for the user
+//   - string: Next page token for pagination
+//   - annotations.Annotations: Additional metadata
+//   - error: Any error that occurred during the operation
 func (o *userBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
-	return nil, "", nil, nil
+	var grants []*v2.Grant
+	annos := annotations.Annotations{}
+
+	// Get all groups the user is a member of
+	groups, err := o.client.GetUserGroups(ctx, resource.Id.Resource)
+	if err != nil {
+		return nil, "", nil, err
+	}
+
+	for _, group := range groups {
+		grant := &v2.Grant{
+			Id: fmt.Sprintf("grant:%s:%s", resource.Id.Resource, *group.ID),
+			Entitlement: &v2.Entitlement{
+				Id:          fmt.Sprintf("user:%s:group:%s", resource.Id.Resource, *group.ID),
+				DisplayName: fmt.Sprintf("Membership in %s", *group.Name),
+				Description: fmt.Sprintf("Membership in the %s group", *group.Name),
+				GrantableTo: []*v2.ResourceType{userResourceType},
+				Slug:        "membership",
+			},
+			Principal: resource,
+		}
+
+		grants = append(grants, grant)
+	}
+
+	return grants, "", annos, nil
 }
 
 // newUserBuilder creates a new instance of userBuilder.

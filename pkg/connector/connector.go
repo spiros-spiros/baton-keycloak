@@ -20,7 +20,7 @@ type Connector struct {
 func (c *Connector) ResourceSyncers(ctx context.Context) []connectorbuilder.ResourceSyncer {
 	return []connectorbuilder.ResourceSyncer{
 		newUserBuilder(c.client),
-		newGroupSyncer(c.client),
+		newGroupBuilder(c.client),
 	}
 }
 

@@ -23,6 +23,8 @@ var (
 	realmField                = field.StringField("realm", field.WithDescription("The realm to connect to"), field.WithRequired(true))
 	keycloakclientField       = field.StringField("keycloak_client_id", field.WithDescription("The client ID to use for authentication"), field.WithRequired(true))
 	keycloakclientSecretField = field.StringField("keycloak_client_secret", field.WithDescription("The client secret to use for authentication"), field.WithRequired(true))
+	batonClientIDField        = field.StringField("baton_client_id", field.WithDescription("The Baton client ID"), field.WithRequired(true))
+	batonClientSecretField    = field.StringField("baton_client_secret", field.WithDescription("The Baton client secret"), field.WithRequired(true))
 )
 
 var configuration = field.NewConfiguration([]field.SchemaField{
@@ -30,6 +32,8 @@ var configuration = field.NewConfiguration([]field.SchemaField{
 	realmField,
 	keycloakclientField,
 	keycloakclientSecretField,
+	batonClientIDField,
+	batonClientSecretField,
 })
 
 var version = "dev"
