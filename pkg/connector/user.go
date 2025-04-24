@@ -70,8 +70,26 @@ func (o *userBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId,
 func (o *userBuilder) Entitlements(ctx context.Context, resource *v2.Resource, _ *pagination.Token) ([]*v2.Entitlement, string, annotations.Annotations, error) {
 	var entitlements []*v2.Entitlement
 
+	// Get the user by username to get their ID
+	users, err := o.client.GetUsers(ctx)
+	if err != nil {
+		return nil, "", nil, err
+	}
+
+	var userID string
+	for _, user := range users {
+		if *user.Username == resource.DisplayName {
+			userID = *user.ID
+			break
+		}
+	}
+
+	if userID == "" {
+		return nil, "", nil, fmt.Errorf("user not found")
+	}
+
 	// Get all groups the user is a member of
-	groups, err := o.client.GetUserGroups(ctx, resource.Id.Resource)
+	groups, err := o.client.GetUserGroups(ctx, userID)
 	if err != nil {
 		return nil, "", nil, err
 	}
@@ -79,7 +97,7 @@ func (o *userBuilder) Entitlements(ctx context.Context, resource *v2.Resource, _
 	for _, group := range groups {
 		// Create an entitlement for each group membership
 		membershipEntitlement := &v2.Entitlement{
-			Id:          fmt.Sprintf("user:%s:group:%s", resource.Id.Resource, *group.ID),
+			Id:          fmt.Sprintf("user:%s:group:%s", userID, *group.ID),
 			DisplayName: fmt.Sprintf("Membership in %s", *group.Name),
 			Description: fmt.Sprintf("Membership in the %s group", *group.Name),
 			GrantableTo: []*v2.ResourceType{userResourceType},
@@ -107,17 +125,35 @@ func (o *userBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken 
 	var grants []*v2.Grant
 	annos := annotations.Annotations{}
 
+	// Get the user by username to get their ID
+	users, err := o.client.GetUsers(ctx)
+	if err != nil {
+		return nil, "", nil, err
+	}
+
+	var userID string
+	for _, user := range users {
+		if *user.Username == resource.DisplayName {
+			userID = *user.ID
+			break
+		}
+	}
+
+	if userID == "" {
+		return nil, "", nil, fmt.Errorf("user not found")
+	}
+
 	// Get all groups the user is a member of
-	groups, err := o.client.GetUserGroups(ctx, resource.Id.Resource)
+	groups, err := o.client.GetUserGroups(ctx, userID)
 	if err != nil {
 		return nil, "", nil, err
 	}
 
 	for _, group := range groups {
 		grant := &v2.Grant{
-			Id: fmt.Sprintf("grant:%s:%s", resource.Id.Resource, *group.ID),
+			Id: fmt.Sprintf("grant:%s:%s", userID, *group.ID),
 			Entitlement: &v2.Entitlement{
-				Id:          fmt.Sprintf("user:%s:group:%s", resource.Id.Resource, *group.ID),
+				Id:          fmt.Sprintf("user:%s:group:%s", userID, *group.ID),
 				DisplayName: fmt.Sprintf("Membership in %s", *group.Name),
 				Description: fmt.Sprintf("Membership in the %s group", *group.Name),
 				GrantableTo: []*v2.ResourceType{userResourceType},

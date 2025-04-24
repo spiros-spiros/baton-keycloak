@@ -61,13 +61,29 @@ func (o *groupBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken
 	var grants []*v2.Grant
 	annos := annotations.Annotations{}
 
-	// Get all users in this group
+	// Get all users in this group directly
 	users, err := o.client.GetUsers(ctx)
 	if err != nil {
 		return nil, "", nil, err
 	}
 
+	// Create a map of user IDs to their resources for quick lookup
+	userResources := make(map[string]*v2.Resource)
 	for _, user := range users {
+		userResource, err := parseIntoUserResource(user, nil)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		userResources[*user.ID] = userResource
+	}
+
+	// Get users in this specific group
+	groupUsers, err := o.client.GetUsers(ctx)
+	if err != nil {
+		return nil, "", nil, err
+	}
+
+	for _, user := range groupUsers {
 		userGroups, err := o.client.GetUserGroups(ctx, *user.ID)
 		if err != nil {
 			return nil, "", nil, err
@@ -76,9 +92,9 @@ func (o *groupBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken
 		// Check if user is in this group
 		for _, group := range userGroups {
 			if *group.ID == resource.Id.Resource {
-				userResource, err := parseIntoUserResource(user, nil)
-				if err != nil {
-					return nil, "", nil, err
+				userResource, ok := userResources[*user.ID]
+				if !ok {
+					continue
 				}
 
 				grant := &v2.Grant{

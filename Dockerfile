@@ -1,6 +1,5 @@
 # Build stage
 FROM golang:1.23-alpine AS builder
-
 WORKDIR /app
 
 # Install git
@@ -33,14 +32,6 @@ WORKDIR /app
 COPY --from=builder --chown=appuser:appuser /app/baton-keycloak /app/
 
 USER appuser
-
-# Set environment variables
-ENV BATON_API_URL="https://auth.dev.wcs.api.weaviate.io/auth"
-ENV BATON_REALM="master"
-ENV BATON_KEYCLOAK_CLIENT_ID="conductor-one-spiros"
-ENV BATON_KEYCLOAK_CLIENT_SECRET="NEkTWB5LfxWk2wVUEWs9fLrteblhQBDt"
-ENV BATON_BATON_CLIENT_ID="quaint-zombie-26844@weaviate.conductor.one/ccc"
-ENV BATON_BATON_CLIENT_SECRET="secret-token:conductorone.com:v1:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6ImwxN2FDVzZkVTZ3bDl6UktEWmdQTXpKS2tPVGRQdUZEODFWbElyeXQxb2ciLCJkIjoiZVZaUHNmOHBrY2J3bV9MdTNTd29BQXFQWWVkLW9Bc0ZscmVJWUlYUG1wOCJ9"
 
 # Run the application
 ENTRYPOINT ["/app/baton-keycloak"]
