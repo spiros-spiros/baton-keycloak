@@ -3,6 +3,7 @@ package connector
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Nerzal/gocloak/v13"
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
@@ -136,10 +137,16 @@ func (o *groupBuilder) Grant(ctx context.Context, resource *v2.Resource, entitle
 		return nil, nil, err
 	}
 
-	// Extract user ID from the entitlement
-	userID := entitlement.Id
+	// Extract user ID from the entitlement ID
+	// Format should be: user:<userID>:group:<groupID>:membership
+	parts := strings.Split(entitlement.Id, ":")
+	if len(parts) < 4 {
+		return nil, nil, fmt.Errorf("invalid entitlement ID format: %s", entitlement.Id)
+	}
+
+	userID := parts[1]
 	if userID == "" {
-		return nil, nil, fmt.Errorf("user ID not found in entitlement")
+		return nil, nil, fmt.Errorf("user ID not found in entitlement ID")
 	}
 
 	// Add user to group
