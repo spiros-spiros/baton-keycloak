@@ -133,33 +133,71 @@ func (o *groupBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken
 }
 
 func (o *groupBuilder) Grant(ctx context.Context, resource *v2.Resource, entitlement *v2.Entitlement) ([]*v2.Grant, annotations.Annotations, error) {
+	fmt.Printf("DEBUG: Starting Grant operation\n")
+	fmt.Printf("DEBUG: Resource ID: %s, DisplayName: %s\n", resource.Id.Resource, resource.DisplayName)
+	fmt.Printf("DEBUG: Entitlement ID: %s\n", entitlement.Id)
+
 	if err := o.client.ensureConnected(ctx); err != nil {
+		fmt.Printf("DEBUG: Failed to ensure connection: %v\n", err)
 		return nil, nil, err
 	}
 
 	// The entitlement ID should be in the format: group:<groupID>:membership
 	parts := strings.Split(entitlement.Id, ":")
+	fmt.Printf("DEBUG: Split entitlement ID parts: %v\n", parts)
 	if len(parts) != 3 || parts[0] != "group" || parts[2] != "membership" {
+		fmt.Printf("DEBUG: Invalid entitlement ID format\n")
 		return nil, nil, fmt.Errorf("invalid entitlement ID format: %s", entitlement.Id)
 	}
 
 	// Get the group ID from the entitlement ID
 	groupID := parts[1]
 	if groupID == "" {
+		fmt.Printf("DEBUG: Group ID not found in entitlement ID\n")
 		return nil, nil, fmt.Errorf("group ID not found in entitlement ID")
 	}
+	fmt.Printf("DEBUG: Extracted group ID: %s\n", groupID)
 
 	// Get the user ID from the resource
 	userID := resource.Id.Resource
 	if userID == "" {
+		fmt.Printf("DEBUG: User ID not found in resource\n")
 		return nil, nil, fmt.Errorf("user ID not found in resource")
+	}
+	fmt.Printf("DEBUG: Extracted user ID: %s\n", userID)
+
+	// Verify the user exists
+	fmt.Printf("DEBUG: Fetching all users to verify user exists\n")
+	users, err := o.client.client.GetUsers(ctx)
+	if err != nil {
+		fmt.Printf("DEBUG: Failed to get users: %v\n", err)
+		return nil, nil, fmt.Errorf("failed to get users: %w", err)
+	}
+	fmt.Printf("DEBUG: Found %d total users\n", len(users))
+
+	var userFound bool
+	for _, user := range users {
+		fmt.Printf("DEBUG: Checking user ID: %s\n", *user.ID)
+		if *user.ID == userID {
+			userFound = true
+			fmt.Printf("DEBUG: Found matching user with username: %s\n", *user.Username)
+			break
+		}
+	}
+
+	if !userFound {
+		fmt.Printf("DEBUG: User not found in Keycloak\n")
+		return nil, nil, fmt.Errorf("user not found: %s", userID)
 	}
 
 	// Add user to group
-	err := o.client.client.AddUserToGroup(ctx, userID, groupID)
+	fmt.Printf("DEBUG: Attempting to add user %s to group %s\n", userID, groupID)
+	err = o.client.client.AddUserToGroup(ctx, userID, groupID)
 	if err != nil {
+		fmt.Printf("DEBUG: Failed to add user to group: %v\n", err)
 		return nil, nil, fmt.Errorf("failed to add user to group: %w", err)
 	}
+	fmt.Printf("DEBUG: Successfully added user to group\n")
 
 	// Create and return the grant
 	grant := &v2.Grant{
@@ -179,6 +217,7 @@ func (o *groupBuilder) Grant(ctx context.Context, resource *v2.Resource, entitle
 			},
 		},
 	}
+	fmt.Printf("DEBUG: Created grant with ID: %s\n", grant.Id)
 
 	return []*v2.Grant{grant}, nil, nil
 }
