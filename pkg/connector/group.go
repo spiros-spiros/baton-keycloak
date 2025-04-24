@@ -143,15 +143,10 @@ func (o *groupBuilder) Grant(ctx context.Context, resource *v2.Resource, entitle
 		return nil, nil, fmt.Errorf("invalid entitlement ID format: %s", entitlement.Id)
 	}
 
-	// Get the user ID from the entitlement's GrantableTo field
-	if len(entitlement.GrantableTo) == 0 {
-		return nil, nil, fmt.Errorf("entitlement GrantableTo is empty")
-	}
-
-	// The first GrantableTo resource type should be the user
-	userResourceType := entitlement.GrantableTo[0]
-	if userResourceType.Id != "user" {
-		return nil, nil, fmt.Errorf("invalid GrantableTo resource type: %s", userResourceType.Id)
+	// Get the group ID from the entitlement ID
+	groupID := parts[1]
+	if groupID == "" {
+		return nil, nil, fmt.Errorf("group ID not found in entitlement ID")
 	}
 
 	// Get the user ID from the resource
@@ -161,16 +156,16 @@ func (o *groupBuilder) Grant(ctx context.Context, resource *v2.Resource, entitle
 	}
 
 	// Add user to group
-	err := o.client.client.AddUserToGroup(ctx, userID, resource.Id.Resource)
+	err := o.client.client.AddUserToGroup(ctx, userID, groupID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to add user to group: %w", err)
 	}
 
 	// Create and return the grant
 	grant := &v2.Grant{
-		Id: fmt.Sprintf("grant:%s:%s", resource.Id.Resource, userID),
+		Id: fmt.Sprintf("grant:%s:%s", groupID, userID),
 		Entitlement: &v2.Entitlement{
-			Id:          fmt.Sprintf("group:%s:membership", resource.Id.Resource),
+			Id:          fmt.Sprintf("group:%s:membership", groupID),
 			DisplayName: fmt.Sprintf("Membership in %s", resource.DisplayName),
 			Description: fmt.Sprintf("Membership in the %s group", resource.DisplayName),
 			GrantableTo: []*v2.ResourceType{userResourceType},
