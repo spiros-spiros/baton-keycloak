@@ -95,6 +95,11 @@ func (o *userBuilder) Entitlements(ctx context.Context, resource *v2.Resource, _
 	}
 
 	for _, group := range groups {
+		groupResource, err := parseIntoGroupResource(group, nil)
+		if err != nil {
+			return nil, "", nil, err
+		}
+
 		// Create an entitlement for each group membership
 		membershipEntitlement := &v2.Entitlement{
 			Id:          fmt.Sprintf("user:%s:group:%s", userID, *group.ID),
@@ -102,6 +107,7 @@ func (o *userBuilder) Entitlements(ctx context.Context, resource *v2.Resource, _
 			Description: fmt.Sprintf("Membership in the %s group", *group.Name),
 			GrantableTo: []*v2.ResourceType{userResourceType},
 			Slug:        "membership",
+			Resource:    groupResource,
 		}
 
 		entitlements = append(entitlements, membershipEntitlement)
@@ -150,6 +156,11 @@ func (o *userBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken 
 	}
 
 	for _, group := range groups {
+		groupResource, err := parseIntoGroupResource(group, nil)
+		if err != nil {
+			return nil, "", nil, err
+		}
+
 		grant := &v2.Grant{
 			Id: fmt.Sprintf("grant:%s:%s", userID, *group.ID),
 			Entitlement: &v2.Entitlement{
@@ -158,6 +169,7 @@ func (o *userBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken 
 				Description: fmt.Sprintf("Membership in the %s group", *group.Name),
 				GrantableTo: []*v2.ResourceType{userResourceType},
 				Slug:        "membership",
+				Resource:    groupResource,
 			},
 			Principal: resource,
 		}

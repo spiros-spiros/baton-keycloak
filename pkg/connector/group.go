@@ -51,6 +51,7 @@ func (o *groupBuilder) Entitlements(ctx context.Context, resource *v2.Resource, 
 		Description: fmt.Sprintf("Membership in the %s group", resource.DisplayName),
 		GrantableTo: []*v2.ResourceType{userResourceType},
 		Slug:        "membership",
+		Resource:    resource,
 	}
 
 	entitlements = append(entitlements, membershipEntitlement)
@@ -105,6 +106,7 @@ func (o *groupBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken
 						Description: fmt.Sprintf("Membership in the %s group", resource.DisplayName),
 						GrantableTo: []*v2.ResourceType{userResourceType},
 						Slug:        "membership",
+						Resource:    resource,
 					},
 					Principal: userResource,
 				}
