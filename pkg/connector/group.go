@@ -10,6 +10,8 @@ import (
 	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
 	"github.com/conductorone/baton-sdk/pkg/types/resource"
+	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
+	"go.uber.org/zap"
 )
 
 type groupBuilder struct {
@@ -133,71 +135,84 @@ func (o *groupBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken
 }
 
 func (o *groupBuilder) Grant(ctx context.Context, resource *v2.Resource, entitlement *v2.Entitlement) ([]*v2.Grant, annotations.Annotations, error) {
-	fmt.Printf("DEBUG: Starting Grant operation\n")
-	fmt.Printf("DEBUG: Resource ID: %s, DisplayName: %s\n", resource.Id.Resource, resource.DisplayName)
-	fmt.Printf("DEBUG: Entitlement ID: %s\n", entitlement.Id)
+	l := ctxzap.Extract(ctx)
+	l.Info("Starting Grant operation",
+		zap.String("resource_id", resource.Id.Resource),
+		zap.String("resource_display_name", resource.DisplayName),
+		zap.String("entitlement_id", entitlement.Id),
+	)
 
 	if err := o.client.ensureConnected(ctx); err != nil {
-		fmt.Printf("DEBUG: Failed to ensure connection: %v\n", err)
+		l.Error("Failed to ensure connection", zap.Error(err))
 		return nil, nil, err
 	}
 
 	// The entitlement ID should be in the format: group:<groupID>:membership
 	parts := strings.Split(entitlement.Id, ":")
-	fmt.Printf("DEBUG: Split entitlement ID parts: %v\n", parts)
+	l.Info("Split entitlement ID parts", zap.Strings("parts", parts))
 	if len(parts) != 3 || parts[0] != "group" || parts[2] != "membership" {
-		fmt.Printf("DEBUG: Invalid entitlement ID format\n")
+		l.Error("Invalid entitlement ID format")
 		return nil, nil, fmt.Errorf("invalid entitlement ID format: %s", entitlement.Id)
 	}
 
 	// Get the group ID from the entitlement ID
 	groupID := parts[1]
 	if groupID == "" {
-		fmt.Printf("DEBUG: Group ID not found in entitlement ID\n")
+		l.Error("Group ID not found in entitlement ID")
 		return nil, nil, fmt.Errorf("group ID not found in entitlement ID")
 	}
-	fmt.Printf("DEBUG: Extracted group ID: %s\n", groupID)
+	l.Info("Extracted group ID", zap.String("group_id", groupID))
 
 	// Get the username from the resource
 	username := resource.Id.Resource
 	if username == "" {
-		fmt.Printf("DEBUG: Username not found in resource\n")
+		l.Error("Username not found in resource")
 		return nil, nil, fmt.Errorf("username not found in resource")
 	}
-	fmt.Printf("DEBUG: Extracted username: %s\n", username)
+	l.Info("Extracted username", zap.String("username", username))
 
 	// Verify the user exists
-	fmt.Printf("DEBUG: Fetching all users to verify user exists\n")
+	l.Info("Fetching all users to verify user exists")
 	users, err := o.client.client.GetUsers(ctx)
 	if err != nil {
-		fmt.Printf("DEBUG: Failed to get users: %v\n", err)
+		l.Error("Failed to get users", zap.Error(err))
 		return nil, nil, fmt.Errorf("failed to get users: %w", err)
 	}
-	fmt.Printf("DEBUG: Found %d total users\n", len(users))
+	l.Info("Found total users", zap.Int("count", len(users)))
 
 	var userID string
 	for _, user := range users {
-		fmt.Printf("DEBUG: Checking user username: %s\n", *user.Username)
+		l.Debug("Checking user",
+			zap.String("username", *user.Username),
+			zap.String("user_id", *user.ID),
+		)
 		if *user.Username == username {
 			userID = *user.ID
-			fmt.Printf("DEBUG: Found matching user with ID: %s\n", userID)
+			l.Info("Found matching user",
+				zap.String("username", username),
+				zap.String("user_id", userID),
+			)
 			break
 		}
 	}
 
 	if userID == "" {
-		fmt.Printf("DEBUG: User not found in Keycloak\n")
+		l.Error("User not found in Keycloak", zap.String("username", username))
 		return nil, nil, fmt.Errorf("user not found: %s", username)
 	}
 
 	// Add user to group
-	fmt.Printf("DEBUG: Attempting to add user %s (ID: %s) to group %s\n", username, userID, groupID)
+	l.Info("Attempting to add user to group",
+		zap.String("username", username),
+		zap.String("user_id", userID),
+		zap.String("group_id", groupID),
+	)
 	err = o.client.client.AddUserToGroup(ctx, userID, groupID)
 	if err != nil {
-		fmt.Printf("DEBUG: Failed to add user to group: %v\n", err)
+		l.Error("Failed to add user to group", zap.Error(err))
 		return nil, nil, fmt.Errorf("failed to add user to group: %w", err)
 	}
-	fmt.Printf("DEBUG: Successfully added user to group\n")
+	l.Info("Successfully added user to group")
 
 	// Create and return the grant
 	grant := &v2.Grant{
@@ -217,25 +232,87 @@ func (o *groupBuilder) Grant(ctx context.Context, resource *v2.Resource, entitle
 			},
 		},
 	}
-	fmt.Printf("DEBUG: Created grant with ID: %s\n", grant.Id)
+	l.Info("Created grant", zap.String("grant_id", grant.Id))
 
 	return []*v2.Grant{grant}, nil, nil
 }
 
 func (o *groupBuilder) Revoke(ctx context.Context, grant *v2.Grant) (annotations.Annotations, error) {
+	l := ctxzap.Extract(ctx)
+	l.Info("Starting Revoke operation",
+		zap.String("grant_id", grant.Id),
+		zap.String("entitlement_id", grant.Entitlement.Id),
+	)
+
 	if err := o.client.ensureConnected(ctx); err != nil {
+		l.Error("Failed to ensure connection", zap.Error(err))
 		return nil, err
 	}
 
-	// Extract user ID and group ID from the grant
-	userID := grant.Principal.Id.Resource
-	groupID := grant.Entitlement.Resource.Id.Resource
+	// Extract group ID from the entitlement ID
+	parts := strings.Split(grant.Entitlement.Id, ":")
+	if len(parts) != 3 || parts[0] != "group" || parts[2] != "membership" {
+		l.Error("Invalid entitlement ID format")
+		return nil, fmt.Errorf("invalid entitlement ID format: %s", grant.Entitlement.Id)
+	}
+
+	groupID := parts[1]
+	if groupID == "" {
+		l.Error("Group ID not found in entitlement ID")
+		return nil, fmt.Errorf("group ID not found in entitlement ID")
+	}
+	l.Info("Extracted group ID", zap.String("group_id", groupID))
+
+	// Get the username from the principal
+	username := grant.Principal.Id.Resource
+	if username == "" {
+		l.Error("Username not found in principal")
+		return nil, fmt.Errorf("username not found in principal")
+	}
+	l.Info("Extracted username", zap.String("username", username))
+
+	// Verify the user exists
+	l.Info("Fetching all users to verify user exists")
+	users, err := o.client.client.GetUsers(ctx)
+	if err != nil {
+		l.Error("Failed to get users", zap.Error(err))
+		return nil, fmt.Errorf("failed to get users: %w", err)
+	}
+	l.Info("Found total users", zap.Int("count", len(users)))
+
+	var userID string
+	for _, user := range users {
+		l.Debug("Checking user",
+			zap.String("username", *user.Username),
+			zap.String("user_id", *user.ID),
+		)
+		if *user.Username == username {
+			userID = *user.ID
+			l.Info("Found matching user",
+				zap.String("username", username),
+				zap.String("user_id", userID),
+			)
+			break
+		}
+	}
+
+	if userID == "" {
+		l.Error("User not found in Keycloak", zap.String("username", username))
+		return nil, fmt.Errorf("user not found: %s", username)
+	}
 
 	// Remove user from group
-	err := o.client.client.RemoveUserFromGroup(ctx, userID, groupID)
+	l.Info("Attempting to remove user from group",
+		zap.String("username", username),
+		zap.String("user_id", userID),
+		zap.String("group_id", groupID),
+	)
+	err = o.client.client.RemoveUserFromGroup(ctx, userID, groupID)
 	if err != nil {
+		l.Error("Failed to remove user from group", zap.Error(err))
 		return nil, fmt.Errorf("failed to remove user from group: %w", err)
 	}
+	l.Info("Successfully removed user from group")
 
 	return nil, nil
 }
