@@ -13,7 +13,7 @@
 
 ### Prerequisites
 
-- Go 1.28 or higher  
+- Go 1.23 or higher  
 - Access to a running Keycloak instance  
 - [Baton CLI](https://github.com/conductorone/baton) installed  
 
