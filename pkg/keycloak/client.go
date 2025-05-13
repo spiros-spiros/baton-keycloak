@@ -41,11 +41,53 @@ func (c *Client) RemoveUserFromGroup(ctx context.Context, userID, groupID string
 }
 
 func (c *Client) GetUsers(ctx context.Context) ([]*gocloak.User, error) {
-	return c.client.GetUsers(ctx, c.token.AccessToken, c.realm, gocloak.GetUsersParams{})
+	users := make([]*gocloak.User, 0)
+	offset := 0
+	step := 300
+
+	for {
+		u, err := c.client.GetUsers(ctx, c.token.AccessToken, c.realm, gocloak.GetUsersParams{
+			First: pointer(offset),
+			Max:   pointer(step + 1),
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		if len(u) == 0 {
+			return users, nil
+		}
+
+		offset += step
+		users = append(users, u...)
+	}
+}
+
+func pointer[T any](v T) *T {
+	return &v
 }
 
 func (c *Client) GetGroups(ctx context.Context) ([]*gocloak.Group, error) {
-	return c.client.GetGroups(ctx, c.token.AccessToken, c.realm, gocloak.GetGroupsParams{})
+	groups := make([]*gocloak.Group, 0)
+	offset := 0
+	step := 300
+
+	for {
+		g, err := c.client.GetGroups(ctx, c.token.AccessToken, c.realm, gocloak.GetGroupsParams{
+			First: pointer(offset),
+			Max:   pointer(step + 1),
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		if len(g) == 0 {
+			return groups, nil
+		}
+
+		offset += step
+		groups = append(groups, g...)
+	}
 }
 
 func (c *Client) GetUserGroups(ctx context.Context, userID string) ([]*gocloak.Group, error) {

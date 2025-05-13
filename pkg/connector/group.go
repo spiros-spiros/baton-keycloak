@@ -92,13 +92,7 @@ func (o *groupBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken
 		userResources[*user.ID] = userResource
 	}
 
-	// Get users in this specific group
-	groupUsers, err := o.client.client.GetUsers(ctx)
-	if err != nil {
-		return nil, "", nil, err
-	}
-
-	for _, user := range groupUsers {
+	for _, user := range users {
 		userGroups, err := o.client.client.GetUserGroups(ctx, *user.ID)
 		if err != nil {
 			return nil, "", nil, err
