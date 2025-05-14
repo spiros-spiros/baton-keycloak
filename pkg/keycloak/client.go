@@ -48,7 +48,7 @@ func (c *Client) GetUsers(ctx context.Context) ([]*gocloak.User, error) {
 	for {
 		u, err := c.client.GetUsers(ctx, c.token.AccessToken, c.realm, gocloak.GetUsersParams{
 			First: pointer(offset),
-			Max:   pointer(step + 1),
+			Max:   pointer(step),
 		})
 		if err != nil {
 			return nil, err
@@ -71,7 +71,7 @@ func (c *Client) GetGroups(ctx context.Context) ([]*gocloak.Group, error) {
 	for {
 		g, err := c.client.GetGroups(ctx, c.token.AccessToken, c.realm, gocloak.GetGroupsParams{
 			First: pointer(offset),
-			Max:   pointer(step + 1),
+			Max:   pointer(step),
 		})
 		if err != nil {
 			return nil, err
