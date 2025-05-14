@@ -166,34 +166,19 @@ func (o *groupBuilder) Grant(ctx context.Context, resource *v2.Resource, entitle
 	l.Info("Extracted username", zap.String("username", username))
 
 	// Verify the user exists
-	l.Info("Fetching all users to verify user exists")
-	users, err := o.client.client.GetUsers(ctx)
+	l.Info("Searching users to verify user exists")
+	users, err := o.client.client.GetUsersByUsername(ctx, username)
 	if err != nil {
 		l.Error("Failed to get users", zap.Error(err))
-		return nil, nil, fmt.Errorf("failed to get users: %w", err)
+		return nil, nil, fmt.Errorf("failed to search users: %w", err)
 	}
-	l.Info("Found total users", zap.Int("count", len(users)))
-
-	var userID string
-	for _, user := range users {
-		l.Debug("Checking user",
-			zap.String("username", *user.Username),
-			zap.String("user_id", *user.ID),
-		)
-		if *user.Username == username {
-			userID = *user.ID
-			l.Info("Found matching user",
-				zap.String("username", username),
-				zap.String("user_id", userID),
-			)
-			break
-		}
-	}
-
-	if userID == "" {
+	if len(users) == 0 {
 		l.Error("User not found in Keycloak", zap.String("username", username))
 		return nil, nil, fmt.Errorf("user not found: %s", username)
 	}
+	l.Info("Found total users", zap.Int("count", len(users)))
+
+	userID := *users[0].ID
 
 	// Add user to group
 	l.Info("Attempting to add user to group",
@@ -266,34 +251,19 @@ func (o *groupBuilder) Revoke(ctx context.Context, grant *v2.Grant) (annotations
 	l.Info("Extracted username", zap.String("username", username))
 
 	// Verify the user exists
-	l.Info("Fetching all users to verify user exists")
-	users, err := o.client.client.GetUsers(ctx)
+	l.Info("Searching users to verify user exists")
+	users, err := o.client.client.GetUsersByUsername(ctx, username)
 	if err != nil {
 		l.Error("Failed to get users", zap.Error(err))
-		return nil, fmt.Errorf("failed to get users: %w", err)
+		return nil, fmt.Errorf("failed to search users: %w", err)
 	}
-	l.Info("Found total users", zap.Int("count", len(users)))
-
-	var userID string
-	for _, user := range users {
-		l.Debug("Checking user",
-			zap.String("username", *user.Username),
-			zap.String("user_id", *user.ID),
-		)
-		if *user.Username == username {
-			userID = *user.ID
-			l.Info("Found matching user",
-				zap.String("username", username),
-				zap.String("user_id", userID),
-			)
-			break
-		}
-	}
-
-	if userID == "" {
+	if len(users) == 0 {
 		l.Error("User not found in Keycloak", zap.String("username", username))
 		return nil, fmt.Errorf("user not found: %s", username)
 	}
+	l.Info("Found total users", zap.Int("count", len(users)))
+
+	userID := *users[0].ID
 
 	// Remove user from group
 	l.Info("Attempting to remove user from group",

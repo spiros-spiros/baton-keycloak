@@ -63,10 +63,6 @@ func (c *Client) GetUsers(ctx context.Context) ([]*gocloak.User, error) {
 	}
 }
 
-func pointer[T any](v T) *T {
-	return &v
-}
-
 func (c *Client) GetGroups(ctx context.Context) ([]*gocloak.Group, error) {
 	groups := make([]*gocloak.Group, 0)
 	offset := 0
@@ -90,10 +86,25 @@ func (c *Client) GetGroups(ctx context.Context) ([]*gocloak.Group, error) {
 	}
 }
 
+func (c *Client) GetUsersByUsername(ctx context.Context, username string) ([]*gocloak.User, error) {
+	users, err := c.client.GetUsers(ctx, c.token.AccessToken, c.realm, gocloak.GetUsersParams{
+		Username: pointer(username),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
 func (c *Client) GetUserGroups(ctx context.Context, userID string) ([]*gocloak.Group, error) {
 	return c.client.GetUserGroups(ctx, c.token.AccessToken, c.realm, userID, gocloak.GetGroupsParams{})
 }
 
 func (c *Client) Close() error {
 	return nil
+}
+
+func pointer[T any](v T) *T {
+	return &v
 }

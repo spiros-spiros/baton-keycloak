@@ -77,23 +77,15 @@ func (o *userBuilder) Entitlements(ctx context.Context, resource *v2.Resource, _
 		return nil, "", nil, err
 	}
 
-	// Get the user by username to get their ID
-	users, err := o.client.client.GetUsers(ctx)
+	users, err := o.client.client.GetUsersByUsername(ctx, resource.DisplayName)
 	if err != nil {
 		return nil, "", nil, err
 	}
-
-	var userID string
-	for _, user := range users {
-		if *user.Username == resource.DisplayName {
-			userID = *user.ID
-			break
-		}
-	}
-
-	if userID == "" {
+	if len(users) == 0 {
 		return nil, "", nil, fmt.Errorf("user not found")
 	}
+
+	userID := *users[0].ID
 
 	// Get all groups the user is a member of
 	groups, err := o.client.client.GetUserGroups(ctx, userID)
@@ -142,23 +134,15 @@ func (o *userBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken 
 		return nil, "", nil, err
 	}
 
-	// Get the user by username to get their ID
-	users, err := o.client.client.GetUsers(ctx)
+	users, err := o.client.client.GetUsersByUsername(ctx, resource.DisplayName)
 	if err != nil {
 		return nil, "", nil, err
 	}
-
-	var userID string
-	for _, user := range users {
-		if *user.Username == resource.DisplayName {
-			userID = *user.ID
-			break
-		}
-	}
-
-	if userID == "" {
+	if len(users) == 0 {
 		return nil, "", nil, fmt.Errorf("user not found")
 	}
+
+	userID := *users[0].ID
 
 	// Get all groups the user is a member of
 	groups, err := o.client.client.GetUserGroups(ctx, userID)
