@@ -11,6 +11,7 @@ import (
 	"github.com/conductorone/baton-sdk/pkg/pagination"
 	"github.com/conductorone/baton-sdk/pkg/types/resource"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
+	"github.com/spiros-spiros/baton-keycloak/pkg/utils"
 	"go.uber.org/zap"
 )
 
@@ -31,7 +32,7 @@ func (o *groupBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId
 		return nil, "", nil, err
 	}
 
-	groups, err := o.client.client.GetGroups(ctx)
+	groups, nextToken, err := o.client.client.GetGroups(ctx, utils.ParseToken(pToken))
 	if err != nil {
 		return nil, "", nil, err
 	}
@@ -44,7 +45,7 @@ func (o *groupBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId
 		resources = append(resources, groupResource)
 	}
 
-	return resources, "", annos, nil
+	return resources, nextToken, annos, nil
 }
 
 func (o *groupBuilder) Entitlements(ctx context.Context, resource *v2.Resource, _ *pagination.Token) ([]*v2.Entitlement, string, annotations.Annotations, error) {
@@ -77,7 +78,7 @@ func (o *groupBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken
 	}
 
 	// Get all users in this group directly
-	users, err := o.client.client.GetUsers(ctx)
+	users, err := o.client.client.GetGroupMembers(ctx, resource.Id.Resource)
 	if err != nil {
 		return nil, "", nil, err
 	}
@@ -92,43 +93,23 @@ func (o *groupBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken
 		userResources[*user.ID] = userResource
 	}
 
-	// Get users in this specific group
-	groupUsers, err := o.client.client.GetUsers(ctx)
-	if err != nil {
-		return nil, "", nil, err
-	}
+	for _, user := range users {
+		userResource := userResources[*user.ID]
 
-	for _, user := range groupUsers {
-		userGroups, err := o.client.client.GetUserGroups(ctx, *user.ID)
-		if err != nil {
-			return nil, "", nil, err
+		grant := &v2.Grant{
+			Id: fmt.Sprintf("grant:%s:%s", resource.Id.Resource, *user.ID),
+			Entitlement: &v2.Entitlement{
+				Id:          fmt.Sprintf("group:%s:membership", resource.Id.Resource),
+				DisplayName: fmt.Sprintf("Membership in %s", resource.DisplayName),
+				Description: fmt.Sprintf("Membership in the %s group", resource.DisplayName),
+				GrantableTo: []*v2.ResourceType{userResourceType},
+				Slug:        "membership",
+				Resource:    resource,
+			},
+			Principal: userResource,
 		}
 
-		// Check if user is in this group
-		for _, group := range userGroups {
-			if *group.ID == resource.Id.Resource {
-				userResource, ok := userResources[*user.ID]
-				if !ok {
-					continue
-				}
-
-				grant := &v2.Grant{
-					Id: fmt.Sprintf("grant:%s:%s", resource.Id.Resource, *user.ID),
-					Entitlement: &v2.Entitlement{
-						Id:          fmt.Sprintf("group:%s:membership", resource.Id.Resource),
-						DisplayName: fmt.Sprintf("Membership in %s", resource.DisplayName),
-						Description: fmt.Sprintf("Membership in the %s group", resource.DisplayName),
-						GrantableTo: []*v2.ResourceType{userResourceType},
-						Slug:        "membership",
-						Resource:    resource,
-					},
-					Principal: userResource,
-				}
-
-				grants = append(grants, grant)
-				break
-			}
-		}
+		grants = append(grants, grant)
 	}
 
 	return grants, "", annos, nil
@@ -172,34 +153,19 @@ func (o *groupBuilder) Grant(ctx context.Context, resource *v2.Resource, entitle
 	l.Info("Extracted username", zap.String("username", username))
 
 	// Verify the user exists
-	l.Info("Fetching all users to verify user exists")
-	users, err := o.client.client.GetUsers(ctx)
+	l.Info("Searching users to verify user exists")
+	users, err := o.client.client.GetUsersByUsername(ctx, username)
 	if err != nil {
 		l.Error("Failed to get users", zap.Error(err))
-		return nil, nil, fmt.Errorf("failed to get users: %w", err)
+		return nil, nil, fmt.Errorf("failed to search users: %w", err)
 	}
-	l.Info("Found total users", zap.Int("count", len(users)))
-
-	var userID string
-	for _, user := range users {
-		l.Debug("Checking user",
-			zap.String("username", *user.Username),
-			zap.String("user_id", *user.ID),
-		)
-		if *user.Username == username {
-			userID = *user.ID
-			l.Info("Found matching user",
-				zap.String("username", username),
-				zap.String("user_id", userID),
-			)
-			break
-		}
-	}
-
-	if userID == "" {
+	if len(users) == 0 {
 		l.Error("User not found in Keycloak", zap.String("username", username))
 		return nil, nil, fmt.Errorf("user not found: %s", username)
 	}
+	l.Info("Found total users", zap.Int("count", len(users)))
+
+	userID := *users[0].ID
 
 	// Add user to group
 	l.Info("Attempting to add user to group",
@@ -272,34 +238,19 @@ func (o *groupBuilder) Revoke(ctx context.Context, grant *v2.Grant) (annotations
 	l.Info("Extracted username", zap.String("username", username))
 
 	// Verify the user exists
-	l.Info("Fetching all users to verify user exists")
-	users, err := o.client.client.GetUsers(ctx)
+	l.Info("Searching users to verify user exists")
+	users, err := o.client.client.GetUsersByUsername(ctx, username)
 	if err != nil {
 		l.Error("Failed to get users", zap.Error(err))
-		return nil, fmt.Errorf("failed to get users: %w", err)
+		return nil, fmt.Errorf("failed to search users: %w", err)
 	}
-	l.Info("Found total users", zap.Int("count", len(users)))
-
-	var userID string
-	for _, user := range users {
-		l.Debug("Checking user",
-			zap.String("username", *user.Username),
-			zap.String("user_id", *user.ID),
-		)
-		if *user.Username == username {
-			userID = *user.ID
-			l.Info("Found matching user",
-				zap.String("username", username),
-				zap.String("user_id", userID),
-			)
-			break
-		}
-	}
-
-	if userID == "" {
+	if len(users) == 0 {
 		l.Error("User not found in Keycloak", zap.String("username", username))
 		return nil, fmt.Errorf("user not found: %s", username)
 	}
+	l.Info("Found total users", zap.Int("count", len(users)))
+
+	userID := *users[0].ID
 
 	// Remove user from group
 	l.Info("Attempting to remove user from group",
