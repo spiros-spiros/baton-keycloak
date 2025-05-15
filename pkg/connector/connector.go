@@ -20,7 +20,7 @@ type Connector struct {
 	clientSecret string
 }
 
-// ResourceSyncers returns a ResourceSyncer for each resource type that should be synced from the upstream service.
+// ResourceSyncers returns ResourceSyncer for each resource type that should be synced from the upstream service.
 func (c *Connector) ResourceSyncers(ctx context.Context) []connectorbuilder.ResourceSyncer {
 	return []connectorbuilder.ResourceSyncer{
 		newUserBuilder(c),
@@ -58,13 +58,10 @@ func (c *Connector) Close() error {
 // ensureConnected checks if the Keycloak client is connected and reconnects if necessary
 func (c *Connector) ensureConnected(ctx context.Context) error {
 	if c.client == nil {
-		client := keycloak.NewClient(c.serverURL, c.realm, c.clientID, c.clientSecret)
-		if err := client.Connect(ctx); err != nil {
-			return err
-		}
-		c.client = client
+		c.client = keycloak.NewClient(c.serverURL, c.realm, c.clientID, c.clientSecret)
 	}
-	return nil
+
+	return c.client.Connect(ctx)
 }
 
 // Actually create a Keycloak connector.
